@@ -82,7 +82,10 @@
   }
 
   /* ---- project title card ---- */
-  .projcard{ cursor:pointer; }
+  /* hover + cursor hang off the <section>, not .projcard — same reason as the
+     click handler: the card is a 3D compositor layer whose hit area Chrome
+     mis-resolves at some viewport sizes, so :hover on it never fires. */
+  .slide.proj{ cursor:pointer; }
   .card > img.projbg{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
   .projveil{
     position:absolute; inset:0;
@@ -91,7 +94,7 @@
       linear-gradient(180deg, rgba(9,10,8,.68) 0%, rgba(9,10,8,.52) 45%, rgba(9,10,8,.94) 100%);
     transition:background .35s;
   }
-  .projcard:hover .projveil{
+  .slide.proj.btnhover .projveil{
     background:
       radial-gradient(120% 90% at 50% 50%, rgba(9,10,8,.18) 0%, rgba(9,10,8,.70) 100%),
       linear-gradient(180deg, rgba(9,10,8,.58) 0%, rgba(9,10,8,.40) 45%, rgba(9,10,8,.90) 100%);
@@ -110,7 +113,10 @@
     background:rgba(9,10,8,.55); backdrop-filter:blur(3px);
     font-size:12.5px; letter-spacing:.6px; transition:background .22s,color .22s;
   }
-  .projcard:hover .toggle{ background:#C0995F; color:#171712; }
+  /* .btnhover is set from JS when the pointer is geometrically inside the
+     button. CSS :hover can't be used here — the card is a 3D compositor layer
+     whose hit area Chrome mis-resolves at some viewport sizes. */
+  .slide.proj.btnhover .toggle{ background:#C0995F; color:#171712; }
   .chev{ display:inline-block; transition:transform .3s; font-size:15px; line-height:1; }
   .slide.proj.open .chev{ transform:rotate(180deg); }
 
@@ -163,7 +169,22 @@
   }
   .animrow:hover .abtn{ background:#C0995F; color:#171712; }
 
-  /* ---- graphics grid slide ---- */
+.animcard {
+  transform: none !important;
+  filter: none !important;
+  opacity: 1 !important;
+  position: relative;
+  z-index: 10;
+}
+
+.animrow {
+  position: relative;
+  z-index: 20;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* ---- graphics grid slide ---- */
   .gridcard{ display:flex; flex-direction:column; justify-content:center;
              padding:4.2% 4.6%; gap:2.4%; }
   .ghead{ text-align:center; margin-bottom:1.4%; }
@@ -194,7 +215,7 @@
 
 <div class="topbar">
   <div class="name">One<b>Viz</b> הדמיות</div>
-  <div class="sub">תיק עבודות · דן נדל״ן</div>
+  <div class="sub">תיק עבודות </div>
 </div>
 
 <div id="deck">
@@ -203,7 +224,6 @@
       <img class="coverbg" src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/example_C1.png" alt="" fetchpriority="high">
       <div class="coverveil"></div>
       <div class="covertext">
-        <div class="covertop">הצעה מותאמת עבור דן נדל״ן</div>
         <div class="coverfoot">
           <div class="eyebrow">הדמיות אדריכליות ושיווק נדל״ן</div>
           <h1><b>OneViz</b> הדמיות</h1>
@@ -572,10 +592,28 @@
         lockUntil = Date.now() + 1400;
       }, 60);
     }
-    p.card.addEventListener('click', toggle);
+    // NOTE: the click lives on the <section>, not on .projcard.
+    // .projcard is 3D-transformed and promoted to its own compositor layer
+    // (perspective + preserve-3d + will-change + blur), and at some viewport
+    // sizes Chrome resolves a hit inside it to the parent section instead —
+    // so a handler on the card silently misses. The section is never
+    // transformed, so its hit area is always exact.
+    p.slide.addEventListener('click', toggle);
     p.card.addEventListener('keydown', e=>{
       if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggle(); }
     });
+
+    // Light the button only while the pointer is actually over it. CSS :hover
+    // is unreliable inside these cards (same hit-testing reason as above), so
+    // test the pointer against the button's rect ourselves.
+    const btn = p.slide.querySelector('.toggle');
+    p.slide.addEventListener('mousemove', e=>{
+      const r = btn.getBoundingClientRect();
+      p.slide.classList.toggle('btnhover',
+        e.clientX >= r.left && e.clientX <= r.right &&
+        e.clientY >= r.top  && e.clientY <= r.bottom);
+    });
+    p.slide.addEventListener('mouseleave', ()=> p.slide.classList.remove('btnhover'));
   });
 
   // which project does the slide in focus belong to? (null = none)
