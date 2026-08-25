@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OneViz הדמיות — תיק עבודות</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@200;300;400;500&display=swap" rel="stylesheet">
+<link rel="preload" as="image" href="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/example_C1.png">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:radial-gradient(1300px 800px at 50% 10%, #1b1d18 0%, #0a0b09 60%), #0a0b09;
+    font-family:'Heebo',sans-serif; direction:rtl; color:#B9B6AC; overflow:hidden;
+  }
+  .topbar{
+    position:fixed; top:0; left:0; right:0; z-index:60;
+    display:flex; justify-content:space-between; align-items:center; padding:16px 26px;
+    background:linear-gradient(180deg, rgba(10,11,9,.92), rgba(10,11,9,0)); pointer-events:none;
+  }
+  .topbar .name{font-size:14px;letter-spacing:2px;color:#9c9a8c;font-weight:300;}
+  .topbar .name b{color:#C0995F;font-weight:500;}
+  .topbar .sub{font-size:11px;letter-spacing:2px;color:#5f6154;}
+
+  #deck{
+    height:100vh; overflow-y:auto; overflow-x:hidden;
+    scroll-snap-type:y mandatory; perspective:1700px;
+    scrollbar-width:none; padding:12vh 0;
+  }
+  #deck::-webkit-scrollbar{display:none;}
+
+  .slide{
+    height:76vh; scroll-snap-align:center; scroll-snap-stop:always;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px;
+    transform-style:preserve-3d;
+  }
+  .slide[hidden]{ display:none; }
+
+  .card{
+    position:relative; width:min(64vw,1000px); aspect-ratio:297/210;
+    background:#111310; border:1px solid #24261f; overflow:hidden;
+    transform-origin:50% 50%; will-change:transform,opacity,filter;
+    transition:box-shadow .35s ease; box-shadow:0 30px 70px rgba(0,0,0,.6);
+  }
+  .card > img{width:100%;height:100%;object-fit:contain;display:block;}
+  .slide.active .card{ box-shadow:0 46px 110px rgba(0,0,0,.82), 0 0 0 1px rgba(192,153,95,.30); }
+
+  /* photo slides: the frame takes the image's own proportions, nothing is cropped */
+  .slide.shot .card{
+    aspect-ratio: var(--ar);
+    width:  min(66vw, 1120px, calc(64vh * var(--ar)));
+    height: auto;
+  }
+  .slide.shot .card > img{ object-fit:contain; }
+
+  /* ---- cover ---- */
+  .card > img.coverbg{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .coverveil{
+    position:absolute; inset:0;
+    background:
+      linear-gradient(180deg, rgba(9,10,8,.62) 0%, rgba(9,10,8,.20) 34%, rgba(9,10,8,.55) 72%, rgba(9,10,8,.93) 100%);
+  }
+  .covertext{ position:absolute; inset:0; padding:5% 6%; display:flex; flex-direction:column; }
+  .covertop{
+    font-size:clamp(8px,.78vw,11px); letter-spacing:3.4px; color:#8d8b7e;
+    text-align:right; text-shadow:0 2px 12px rgba(0,0,0,.9);
+  }
+  .coverfoot{ margin-top:auto; text-align:right; }
+  .coverfoot .eyebrow{
+    font-size:clamp(9px,.92vw,13px); letter-spacing:3.2px; color:#C0995F;
+    margin-bottom:10px; text-shadow:0 2px 14px rgba(0,0,0,.9);
+  }
+  .coverfoot h1{
+    font-weight:300; font-size:clamp(26px,4.3vw,58px); color:#F7F4EC; line-height:1.06;
+    text-shadow:0 3px 30px rgba(0,0,0,.9);
+  }
+  .coverfoot h1 b{ font-weight:400; }
+  .coverfoot p{
+    margin-top:12px; font-size:clamp(10px,1.15vw,15px); color:#a8a598;
+    text-shadow:0 2px 14px rgba(0,0,0,.9);
+  }
+
+  /* ---- project title card ---- */
+  .projcard{ cursor:pointer; }
+  .card > img.projbg{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .projveil{
+    position:absolute; inset:0;
+    background:
+      radial-gradient(120% 90% at 50% 50%, rgba(9,10,8,.30) 0%, rgba(9,10,8,.80) 100%),
+      linear-gradient(180deg, rgba(9,10,8,.68) 0%, rgba(9,10,8,.52) 45%, rgba(9,10,8,.94) 100%);
+    transition:background .35s;
+  }
+  .projcard:hover .projveil{
+    background:
+      radial-gradient(120% 90% at 50% 50%, rgba(9,10,8,.18) 0%, rgba(9,10,8,.70) 100%),
+      linear-gradient(180deg, rgba(9,10,8,.58) 0%, rgba(9,10,8,.40) 45%, rgba(9,10,8,.90) 100%);
+  }
+  .projtext{
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center; gap:10px; padding:6%;
+  }
+  .projtext .eyebrow{ font-size:12px; letter-spacing:3px; color:#D6B67E;
+    text-shadow:0 2px 14px rgba(0,0,0,.9); }
+  .projtext h2{ font-weight:500; font-size:clamp(22px,3.1vw,42px); color:#F7F4EC;
+    text-shadow:0 2px 26px rgba(0,0,0,.85); }
+  .toggle{
+    margin-top:14px; display:inline-flex; align-items:center; gap:9px;
+    border:1px solid #C0995F; color:#EBD5AC; padding:9px 22px;
+    background:rgba(9,10,8,.55); backdrop-filter:blur(3px);
+    font-size:12.5px; letter-spacing:.6px; transition:background .22s,color .22s;
+  }
+  .projcard:hover .toggle{ background:#C0995F; color:#171712; }
+  .chev{ display:inline-block; transition:transform .3s; font-size:15px; line-height:1; }
+  .slide.proj.open .chev{ transform:rotate(180deg); }
+
+  /* ---- section divider: icon beside the text ---- */
+  .divcard{
+    display:flex; align-items:center; justify-content:center;
+    gap:clamp(24px,4.4vw,64px); padding:0 8%;
+  }
+  .divicon{
+    flex:0 0 auto;
+    width:clamp(120px,16.5vw,240px);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .divicon img{
+    width:100%; height:auto; display:block;
+    filter:drop-shadow(0 22px 40px rgba(0,0,0,.75));
+  }
+  .divtext{ text-align:right; }
+  .divtext .eyebrow{
+    font-size:clamp(10px,1vw,12px); letter-spacing:3px; color:#C0995F; margin-bottom:12px;
+  }
+  .divtext .rule{ width:36px; height:1px; background:#C0995F; margin-bottom:16px; }
+  .divtext h2{
+    font-weight:500; font-size:clamp(24px,3.4vw,46px); color:#F7F4EC;
+    line-height:1.12; margin-bottom:10px;
+  }
+  .divtext p{ font-size:clamp(11px,1.15vw,15px); color:#9d9b8e; }
+
+  .cap{
+    font-size:12.5px; letter-spacing:1.4px; color:#7d7c6f;
+    transition:color .35s,opacity .35s; opacity:.5; white-space:nowrap;
+  }
+  .cap .num{ color:#C0995F; letter-spacing:2px; margin-left:8px; }
+  .slide.active .cap{ color:#D8D4C8; opacity:1; }
+
+  /* ---- animations slide ---- */
+  .animcard{ display:flex; flex-direction:column; justify-content:center; padding:6% 10%; }
+  .animhead{ text-align:center; margin-bottom:7%; }
+  .animhead .eyebrow{ font-size:12px; letter-spacing:3px; color:#C0995F; margin-bottom:8px; }
+  .animhead h2{ font-weight:500; font-size:clamp(17px,2.1vw,26px); color:#F3EFE6; }
+  .animrow{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:3.2% 1%; border-top:1px solid #33362F; text-decoration:none;
+  }
+  .animrow:last-child{ border-bottom:1px solid #33362F; }
+  .aname{ font-size:clamp(14px,1.7vw,20px); color:#F3EFE6; }
+  .abtn{
+    font-size:clamp(11px,1.1vw,13px); color:#C0995F; border:1px solid #8a744c;
+    padding:7px 18px; transition:background .2s,color .2s;
+  }
+  .animrow:hover .abtn{ background:#C0995F; color:#171712; }
+
+  /* ---- graphics grid slide ---- */
+  .gridcard{ display:flex; flex-direction:column; justify-content:center;
+             padding:4.2% 4.6%; gap:2.4%; }
+  .ghead{ text-align:center; margin-bottom:1.4%; }
+  .ghead .eyebrow{ font-size:clamp(9px,.85vw,12px); letter-spacing:3px; color:#C0995F; margin-bottom:7px; }
+  .ghead h2{ font-weight:400; font-size:clamp(14px,1.85vw,24px); color:#F3EFE6; }
+  .grow{ display:grid; grid-template-columns:repeat(4,1fr); gap:clamp(8px,1.5vw,20px); }
+  .gtile{ display:flex; flex-direction:column; gap:7px; min-width:0; }
+  .gtile .gimg{ width:100%; background:#0d0e0c; border:1px solid #262820; overflow:hidden; }
+  .grow1 .gimg{ aspect-ratio:1/1; }
+  .grow2 .gimg{ aspect-ratio:10/9; }
+  .gtile img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .gcap{ font-size:clamp(7.5px,.72vw,10.5px); letter-spacing:.5px; color:#87867a;
+         text-align:center; line-height:1.3; }
+
+  .rail{ position:fixed; top:50%; right:20px; transform:translateY(-50%);
+         z-index:60; display:flex; flex-direction:column; gap:9px; }
+  .rail button{ width:8px;height:8px;padding:0;border-radius:50%;
+                border:1px solid #4d4f42;background:transparent;cursor:pointer;transition:all .28s; }
+  .rail button.on{ background:#C0995F;border-color:#C0995F;transform:scale(1.5); }
+  .rail button.sub{ width:5px;height:5px;opacity:.8; }
+
+  .hint{ position:fixed; bottom:18px; left:0; right:0; text-align:center;
+         font-size:11px; color:#4e5045; letter-spacing:.6px; z-index:60;
+         pointer-events:none; transition:opacity .4s; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="name">One<b>Viz</b> הדמיות</div>
+  <div class="sub">תיק עבודות · דן נדל״ן</div>
+</div>
+
+<div id="deck">
+  <section class="slide" data-cap="כריכה">
+    <div class="card">
+      <img class="coverbg" src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/example_C1.png" alt="" fetchpriority="high">
+      <div class="coverveil"></div>
+      <div class="covertext">
+        <div class="covertop">הצעה מותאמת עבור דן נדל״ן</div>
+        <div class="coverfoot">
+          <div class="eyebrow">הדמיות אדריכליות ושיווק נדל״ן</div>
+          <h1><b>OneViz</b> הדמיות</h1>
+          <p>תיק עבודות — מגורים, מסחר ומשרדים</p>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="slide" data-cap="הדמיות חוץ">
+    <div class="card divcard">
+      <div class="divicon"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/exterior.png" alt=""></div>
+      <div class="divtext">
+        <div class="eyebrow">עמוד 01</div>
+        <div class="rule"></div>
+        <h2>הדמיות חוץ</h2>
+        <p>מבחר פרויקטים — מגורים, מסחר ומשרדים</p>
+      </div>
+    </div>
+  </section>
+  <section class="slide proj" data-cap="אאורה — לוד" data-proj="0">
+    <div class="card projcard" role="button" tabindex="0">
+      <img class="projbg" src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/Cam_23.jpg" alt="" loading="lazy" decoding="async">
+      <div class="projveil"></div>
+      <div class="projtext">
+        <div class="eyebrow">פרויקט 01</div>
+        <h2>אאורה — לוד</h2>
+        <div class="toggle"><span class="chev">⌄</span><span class="tlabel">להצגת 3 מבטים</span></div>
+      </div>
+    </div>
+  </section>
+  <section class="slide shot" style="--ar:1.7141" data-cap="מבט רחוב — כניסה למתחם" data-of="0" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/Cam_23.jpg" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide shot" style="--ar:0.9555" data-cap="חזית מגדלים — גימור אבן" data-of="0" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/C22%20%D7%90%D7%91%D7%9F%20%D7%9B%D7%94%D7%94.jpg" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide shot" style="--ar:2.2075" data-cap="מבט אווירי — שעת דמדומים" data-of="0" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/SP0021_D.jpg" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide proj" data-cap="קבוצת חג׳ג׳ — בבלי" data-proj="1">
+    <div class="card projcard" role="button" tabindex="0">
+      <img class="projbg" src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/0051_1.jpg" alt="" loading="lazy" decoding="async">
+      <div class="projveil"></div>
+      <div class="projtext">
+        <div class="eyebrow">פרויקט 02</div>
+        <h2>קבוצת חג׳ג׳ — בבלי</h2>
+        <div class="toggle"><span class="chev">⌄</span><span class="tlabel">להצגת 3 מבטים</span></div>
+      </div>
+    </div>
+  </section>
+  <section class="slide shot" style="--ar:1.4986" data-cap="מבט פנורמי — קו הרקיע של תל אביב" data-of="1" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/0051_1.jpg" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide shot" style="--ar:1.7778" data-cap="מבט חוץ — חזית מהפארק" data-of="1" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/003.jpg" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide shot" style="--ar:1.7778" data-cap="מבט אווירי — גג ובריכה" data-of="1" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/0012.2.jpg" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide proj" data-cap="בריטניה ישראל — בניין משרדים" data-proj="2">
+    <div class="card projcard" role="button" tabindex="0">
+      <img class="projbg" src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/%D7%91%D7%A0%D7%99%D7%99%D7%9F%20%D7%9E%D7%A9%D7%A8%D7%93%D7%99%D7%9D_C4.jpg" alt="" loading="lazy" decoding="async">
+      <div class="projveil"></div>
+      <div class="projtext">
+        <div class="eyebrow">פרויקט 03</div>
+        <h2>בריטניה ישראל — בניין משרדים</h2>
+        <div class="toggle"><span class="chev">⌄</span><span class="tlabel">להצגת 3 מבטים</span></div>
+      </div>
+    </div>
+  </section>
+  <section class="slide shot" style="--ar:1.7778" data-cap="מבט אווירי — שעת ערב" data-of="2" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/%D7%91%D7%A0%D7%99%D7%99%D7%9F%20%D7%9E%D7%A9%D7%A8%D7%93%D7%99%D7%9D_C4.jpg" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide shot" style="--ar:0.8545" data-cap="מבט חוץ — חזית הבניין מהכביש" data-of="2" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/%D7%91%D7%A0%D7%99%D7%99%D7%9F%20%D7%9E%D7%A9%D7%A8%D7%93%D7%99%D7%9D_C2.jpg" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide shot" style="--ar:1.0452" data-cap="קומת קרקע — מסחר ומרפסות" data-of="2" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/%D7%91%D7%A0%D7%99%D7%99%D7%9F%20%D7%9E%D7%A9%D7%A8%D7%93%D7%99%D7%9D_C3.jpg" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide proj" data-cap="יובל אלון — נווה דוד" data-proj="3">
+    <div class="card projcard" role="button" tabindex="0">
+      <img class="projbg" src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/%D7%A0%D7%95%D7%95%D7%94%20%D7%93%D7%95%D7%93_C3.jpg" alt="" loading="lazy" decoding="async">
+      <div class="projveil"></div>
+      <div class="projtext">
+        <div class="eyebrow">פרויקט 04</div>
+        <h2>יובל אלון — נווה דוד</h2>
+        <div class="toggle"><span class="chev">⌄</span><span class="tlabel">להצגת 3 מבטים</span></div>
+      </div>
+    </div>
+  </section>
+  <section class="slide shot" style="--ar:1.3333" data-cap="מבט אווירי — שקיעה על החוף" data-of="3" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/%D7%A0%D7%95%D7%95%D7%94%20%D7%93%D7%95%D7%93_C3.jpg" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide shot" style="--ar:1.3333" data-cap="מבט מהים — קו החוף והמגדלים" data-of="3" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/%D7%A0%D7%95%D7%95%D7%94%20%D7%93%D7%95%D7%93_C2.jpg" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide shot" style="--ar:1.7781" data-cap="מבט אווירי — הקשר לים ולעיר" data-of="3" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/%D7%A0%D7%95%D7%95%D7%94%20%D7%93%D7%95%D7%93_C4.jpg" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide proj" data-cap="סלע בינוי — רמת אפעל" data-proj="4">
+    <div class="card projcard" role="button" tabindex="0">
+      <img class="projbg" src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/OpenAI%20Playground%202026-08-25%20at%2010.19.40.png" alt="" loading="lazy" decoding="async">
+      <div class="projveil"></div>
+      <div class="projtext">
+        <div class="eyebrow">פרויקט 05</div>
+        <h2>סלע בינוי — רמת אפעל</h2>
+        <div class="toggle"><span class="chev">⌄</span><span class="tlabel">להצגת 3 מבטים</span></div>
+      </div>
+    </div>
+  </section>
+  <section class="slide shot" style="--ar:1.7778" data-cap="מתחם מסחרי — שעת שקיעה" data-of="4" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/OpenAI%20Playground%202026-08-25%20at%2010.19.40.png" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide shot" style="--ar:1.7778" data-cap="חזית מסחרית — שעת דמדומים" data-of="4" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/OpenAI%20Playground%202026-08-25%20at%2010.21.53.png" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide shot" style="--ar:1.7778" data-cap="חזית מסחרית — שעת ערב" data-of="4" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/OpenAI%20Playground%202026-08-25%20at%2011.04.25.png" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide" data-cap="הדמיות פנים">
+    <div class="card divcard">
+      <div class="divicon"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/interior.png" alt=""></div>
+      <div class="divtext">
+        <div class="eyebrow">עמוד 02</div>
+        <div class="rule"></div>
+        <h2>הדמיות פנים</h2>
+        <p>מגורים, מסחר ושטחים משותפים</p>
+      </div>
+    </div>
+  </section>
+  <section class="slide proj" data-cap="הדמיות פנים — מבחר עבודות" data-proj="5">
+    <div class="card projcard" role="button" tabindex="0">
+      <img class="projbg" src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/akba%20court.png" alt="" loading="lazy" decoding="async">
+      <div class="projveil"></div>
+      <div class="projtext">
+        <div class="eyebrow">מגורים · מסחר · שטחים משותפים</div>
+        <h2>הדמיות פנים — מבחר עבודות</h2>
+        <div class="toggle"><span class="chev">⌄</span><span class="tlabel">להצגת 13 מבטים</span></div>
+      </div>
+    </div>
+  </section>
+  <section class="slide shot" style="--ar:1.7778" data-cap="טרקלין וולנס" data-of="5" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/%D7%95%D7%95%D7%90%D7%9C%D7%A0%D7%A1.png" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide shot" style="--ar:1.7778" data-cap="חדר כושר" data-of="5" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/%D7%97%D7%93%D7%A8%20%D7%9B%D7%95%D7%A9%D7%A8.png" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide shot" style="--ar:1.7778" data-cap="בריכת ספא מקורה" data-of="5" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/%D7%A1%D7%A4%D7%94.png" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide shot" style="--ar:1.8333" data-cap="קפה בקומת הקרקע" data-of="5" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/rothsield_corner_resturant.jpg" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide shot" style="--ar:1.3393" data-cap="מסעדה — קיר ירוק ותאורה חמה" data-of="5" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/the_cube_buildings_resturant.jpg" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide shot" style="--ar:2.3571" data-cap="מסעדה ובר — פינות ישיבה" data-of="5" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/The_Illuminated_City_Peak_resturant.jpg" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide shot" style="--ar:2.0964" data-cap="פנטהאוז — מטבח, סלון ומרפסת" data-of="5" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/Urban%20Breeze_interiors.jpg" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide shot" style="--ar:1.6663" data-cap="סלון — קיר טלוויזיה" data-of="5" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/%D7%96%D7%95%D7%95%D7%99%D7%AA%202%20-%20%D7%9E%D7%91%D7%98%20%D7%9E%D7%94%D7%A6%D7%93%20%D7%94%D7%99%D7%9E%D7%A0%D7%99%20%D7%9C%D7%9B%D7%99%D7%95%D7%95%D7%9F%20%D7%A7%D7%99%D7%A8%20%D7%94%D7%98%D7%9C%D7%95%D7%95%D7%99%D7%96%D7%99%D7%94.png" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide shot" style="--ar:1.7071" data-cap="סלון ופינת אוכל — נוף עירוני" data-of="5" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/1254121.jpg" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide shot" style="--ar:1.7917" data-cap="לובי כניסה" data-of="5" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/akba%20court.png" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide shot" style="--ar:1.7917" data-cap="אזור עבודה משותף" data-of="5" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/office_example.png" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide shot" style="--ar:1.8333" data-cap="בריכת גג אינסוף" data-of="5" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/poolrooftop.jpg" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide shot" style="--ar:1.8333" data-cap="מרפסת גג — פינת אירוח" data-of="5" hidden>
+    <div class="card"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/rooftop.jpg" alt="" loading="lazy" decoding="async"></div>
+  </section>
+  <section class="slide" data-cap="אנימציות">
+    <div class="card divcard">
+      <div class="divicon"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/animation.png" alt=""></div>
+      <div class="divtext">
+        <div class="eyebrow">עמוד 03</div>
+        <div class="rule"></div>
+        <h2>אנימציות</h2>
+        <p>סרטוני תנועה לפרויקטים נבחרים</p>
+      </div>
+    </div>
+  </section>
+  <section class="slide" data-cap="סרטוני תנועה">
+    <div class="card animcard">
+      <div class="animhead"><div class="eyebrow">אנימציות</div><h2>סרטוני תנועה לפרויקטים נבחרים</h2></div>
+      <div class="animlist">
+        <a class="animrow" href="https://drive.google.com/file/d/1d0iaprFL22V8Yi2z5IJ2X3uh8JtcLu-C/view?usp=sharing" target="_blank" rel="noopener"><span class="aname">עין התכלת</span><span class="abtn">לצפייה בסרטון</span></a>
+        <a class="animrow" href="https://drive.google.com/file/d/1ekVk_RBLlqAoEH7_rBCSuhk8tqqKwx2a/view?usp=sharing" target="_blank" rel="noopener"><span class="aname">גבעת אולגה</span><span class="abtn">לצפייה בסרטון</span></a>
+        <a class="animrow" href="https://drive.google.com/file/d/1iaFxhw4CUGZktIQNMh-tp-_X5baZncn9/view?usp=sharing" target="_blank" rel="noopener"><span class="aname">חיפה רוטשילד</span><span class="abtn">לצפייה בסרטון</span></a>
+      </div>
+    </div>
+  </section>
+  <section class="slide" data-cap="גרפיקה">
+    <div class="card divcard">
+      <div class="divicon"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/grafics.png" alt=""></div>
+      <div class="divtext">
+        <div class="eyebrow">עמוד 04</div>
+        <div class="rule"></div>
+        <h2>גרפיקה</h2>
+        <p>תוכניות דירה ומתחם בסגנונות שונים</p>
+      </div>
+    </div>
+  </section>
+  <section class="slide" data-cap="תוכניות דירה ומתחם">
+    <div class="card gridcard">
+      <div class="ghead"><div class="eyebrow">מבחר תוכניות</div><h2>גרפיקה — דירה, מתחם ופיתוח נופי</h2></div>
+      <div class="grow grow1">
+        <div class="gtile">
+          <div class="gimg"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/AP%209_erth-style.png" alt="" loading="lazy" decoding="async"></div>
+          <div class="gcap">תוכנית דירה — סגנון אדמה</div>
+        </div>
+        <div class="gtile">
+          <div class="gimg"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/AP%209_dark-style.png" alt="" loading="lazy" decoding="async"></div>
+          <div class="gcap">תוכנית דירה — סגנון כהה</div>
+        </div>
+        <div class="gtile">
+          <div class="gimg"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/AP%209_colord-style.jpg" alt="" loading="lazy" decoding="async"></div>
+          <div class="gcap">תוכנית דירה — סגנון כחול</div>
+        </div>
+        <div class="gtile">
+          <div class="gimg"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/AP%209_bright-style.jpg" alt="" loading="lazy" decoding="async"></div>
+          <div class="gcap">תוכנית דירה — סגנון בהיר</div>
+        </div>
+      </div>
+      <div class="grow grow2">
+        <div class="gtile">
+          <div class="gimg"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/%D7%AA%D7%95%D7%9B%D7%A0%D7%99%D7%AA%20%D7%9E%D7%AA%D7%97%D7%9D%20%D7%92%D7%A8%D7%A4%D7%99%D7%AA.png" alt="" loading="lazy" decoding="async"></div>
+          <div class="gcap">תוכנית פיתוח נופי — הדמיה אווירית</div>
+        </div>
+        <div class="gtile">
+          <div class="gimg"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/%D7%94%D7%94%D7%92%D7%A0%D7%94%2022.jpg" alt="" loading="lazy" decoding="async"></div>
+          <div class="gcap">תוכנית קומת קרקע — דירה 1</div>
+        </div>
+        <div class="gtile">
+          <div class="gimg"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/%D7%92%D7%91%D7%A2%D7%AA%20%D7%90%D7%95%D7%9C%D7%92%D7%94_03.jpg" alt="" loading="lazy" decoding="async"></div>
+          <div class="gcap">תוכנית מתחם — סגנון כהה</div>
+        </div>
+        <div class="gtile">
+          <div class="gimg"><img src="https://pub-911b30b899f044b7b4b7ac16337acb47.r2.dev/%D7%92%D7%91%D7%A2%D7%AA%20%D7%90%D7%95%D7%9C%D7%92%D7%94_02.jpg" alt="" loading="lazy" decoding="async"></div>
+          <div class="gcap">תוכנית מתחם — סגנון בהיר</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="rail" id="rail"></div>
+<div class="hint" id="hint">גללו למעלה ולמטה · לחצו על שם הפרויקט להצגת המבטים</div>
+
+<script>
+(function(){
+  const deck = document.getElementById('deck');
+  const rail = document.getElementById('rail');
+  let slides, cards, dots;
+
+  // caption element under each card
+  document.querySelectorAll('.slide').forEach(s=>{
+    const c=document.createElement('div');
+    c.className='cap';
+    c.textContent=s.dataset.cap||'';
+    s.appendChild(c);
+  });
+
+  function collect(){
+    slides = [...document.querySelectorAll('.slide')].filter(s=>!s.hidden);
+    cards  = slides.map(s=>s.querySelector('.card'));
+  }
+
+  function buildRail(){
+    rail.innerHTML='';
+    dots = slides.map((s,i)=>{
+      const b=document.createElement('button');
+      if(s.classList.contains('shot')) b.classList.add('sub');
+      b.addEventListener('click',()=> s.scrollIntoView({behavior:'smooth',block:'center'}));
+      rail.appendChild(b);
+      return b;
+    });
+  }
+
+  let ticking=false, activeIdx=-1;
+  function frame(){
+    const vh=window.innerHeight, mid=vh/2;
+    let bestI=0,bestD=1e9;
+    slides.forEach((s,i)=>{
+      const r=s.getBoundingClientRect();
+      const d=((r.top+r.height/2)-mid)/vh;
+      const ad=Math.min(Math.abs(d),1);
+      cards[i].style.transform=
+        `translateZ(${(-ad*330).toFixed(1)}px) rotateX(${(-d*11).toFixed(2)}deg) scale(${(1-ad*0.26).toFixed(4)})`;
+      cards[i].style.opacity=(1-ad*0.70).toFixed(3);
+      cards[i].style.filter= ad>0.02 ? `blur(${(ad*3.2).toFixed(2)}px)` : 'none';
+      if(ad<bestD){bestD=ad;bestI=i;}
+    });
+    if(bestI!==activeIdx){
+      activeIdx=bestI;
+      slides.forEach((s,i)=>s.classList.toggle('active',i===bestI));
+      dots.forEach((b,i)=>b.classList.toggle('on',i===bestI));
+    }
+    ticking=false;
+  }
+  function onScroll(){ if(!ticking){ticking=true;requestAnimationFrame(frame);} }
+  deck.addEventListener('scroll',onScroll,{passive:true});
+  window.addEventListener('resize',onScroll);
+
+  function refresh(){ collect(); buildRail(); activeIdx=-1; frame(); }
+  refresh();
+
+  /* ---- expand / collapse a project (accordion) ---- */
+  const PROJ = [...document.querySelectorAll('.slide.proj')].map(ps=>{
+    const pi = ps.dataset.proj;
+    return {
+      pi,
+      slide: ps,
+      card:  ps.querySelector('.projcard'),
+      label: ps.querySelector('.tlabel'),
+      shots: [...document.querySelectorAll(`.slide.shot[data-of="${pi}"]`)]
+    };
+  });
+  let openProj = null;
+  let lockUntil = 0;   // suppress auto-close while a programmatic scroll is in flight
+
+  function setOpen(p, on){
+    p.slide.classList.toggle('open', on);
+    p.shots.forEach(s=> s.hidden = !on);
+    p.label.textContent = on ? 'להסתרת המבטים' : `להצגת ${p.shots.length} מבטים`;
+  }
+
+  // close a project without the page appearing to jump: keep `anchor` visually still
+  function closeWithAnchor(p, anchor){
+    const snap = deck.style.scrollSnapType;
+    deck.style.scrollSnapType = 'none';
+    const t1 = anchor ? anchor.getBoundingClientRect().top : 0;
+    setOpen(p, false);
+    refresh();
+    if (anchor){
+      const t2 = anchor.getBoundingClientRect().top;
+      deck.scrollTop += (t2 - t1);
+    }
+    requestAnimationFrame(()=>{ deck.style.scrollSnapType = snap || 'y mandatory'; frame(); });
+  }
+
+  PROJ.forEach(p=>{
+    function toggle(){
+      if (openProj === p){
+        setOpen(p, false); openProj = null;
+        refresh();
+        lockUntil = Date.now() + 1400;
+        p.slide.scrollIntoView({behavior:'smooth', block:'center'});
+        return;
+      }
+      if (openProj) setOpen(openProj, false);   // accordion: only one open at a time
+      setOpen(p, true); openProj = p;
+      refresh();
+      lockUntil = Date.now() + 1600;
+      setTimeout(()=>{
+        p.shots[0].scrollIntoView({behavior:'smooth', block:'center'});
+        lockUntil = Date.now() + 1400;
+      }, 60);
+    }
+    p.card.addEventListener('click', toggle);
+    p.card.addEventListener('keydown', e=>{
+      if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggle(); }
+    });
+  });
+
+  // which project does the slide in focus belong to? (null = none)
+  function contextOf(slide){
+    if (!slide) return null;
+    if (slide.classList.contains('shot')) return slide.dataset.of;
+    if (slide.classList.contains('proj')) return slide.dataset.proj;
+    return null;
+  }
+
+  // once scrolling settles, collapse the open project if we've moved away from it
+  let settle;
+  deck.addEventListener('scroll', ()=>{
+    clearTimeout(settle);
+    settle = setTimeout(()=>{
+      if (!openProj) return;
+      if (Date.now() < lockUntil) return;
+      const active = slides[activeIdx];
+      if (!active) return;
+      if (contextOf(active) !== openProj.pi){
+        closeWithAnchor(openProj, active);
+        openProj = null;
+      }
+    }, 180);
+  }, {passive:true});
+
+  deck.addEventListener('scroll',()=>{ document.getElementById('hint').style.opacity='0'; },{once:true});
+
+  function go(step){
+    const t=Math.max(0,Math.min(slides.length-1,activeIdx+step));
+    slides[t].scrollIntoView({behavior:'smooth',block:'center'});
+  }
+  document.addEventListener('keydown',e=>{
+    if(e.key==='ArrowDown'||e.key==='PageDown'){e.preventDefault();go(1);}
+    if(e.key==='ArrowUp'||e.key==='PageUp'){e.preventDefault();go(-1);}
+    if(e.key==='Home'){e.preventDefault();slides[0].scrollIntoView({behavior:'smooth',block:'center'});}
+    if(e.key==='End'){e.preventDefault();slides[slides.length-1].scrollIntoView({behavior:'smooth',block:'center'});}
+  });
+})();
+</script>
+</body>
+</html>
